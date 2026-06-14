@@ -1,4 +1,4 @@
-````markdown
+
 # Apache HTTPS Practical Using Root CA → Sub CA → Server Certificate
 
 ## Step 1: Create Working Directory
@@ -517,4 +517,3 @@ Apache HTTPS Website
 (_server_private_key_name_).key
 (_sub_ca_certificate_name_).crt
 ```
-````
