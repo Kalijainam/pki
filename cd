@@ -1,0 +1,57 @@
+mkdir (_project_name_)
+cd (_project_name_)
+
+openssl genpkey -algorithm RSA -out (_root_ca_private_key_name_).key
+openssl req -new -key (_root_ca_private_key_name_).key -out (_root_ca_csr_name_).csr
+openssl x509 -req -in (_root_ca_csr_name_).csr -signkey (_root_ca_private_key_name_).key -out (_root_ca_certificate_name_).crt -days 3650
+openssl x509 -in (_root_ca_certificate_name_).crt -text -noout
+
+openssl genpkey -algorithm RSA -out (_sub_ca_private_key_name_).key
+openssl req -new -key (_sub_ca_private_key_name_).key -out (_sub_ca_csr_name_).csr
+openssl x509 -req -in (_sub_ca_csr_name_).csr -CA (_root_ca_certificate_name_).crt -CAkey (_root_ca_private_key_name_).key -CAcreateserial -out (_sub_ca_certificate_name_).crt -days 1825
+openssl x509 -in (_sub_ca_certificate_name_).crt -text -noout
+
+openssl genpkey -algorithm RSA -out (_server_private_key_name_).key
+openssl req -new -key (_server_private_key_name_).key -out (_server_csr_name_).csr
+openssl x509 -req -in (_server_csr_name_).csr -CA (_sub_ca_certificate_name_).crt -CAkey (_sub_ca_private_key_name_).key -CAcreateserial -out (_server_certificate_name_).crt -days 365
+openssl x509 -in (_server_certificate_name_).crt -text -noout
+
+openssl verify -CAfile (_root_ca_certificate_name_).crt -untrusted (_sub_ca_certificate_name_).crt (_server_certificate_name_).crt
+
+sudo apt update
+sudo apt install apache2 openssl -y
+sudo a2enmod ssl
+sudo systemctl restart apache2
+sudo mkdir -p /etc/apache2/ssl
+sudo cp (_server_certificate_name_).crt /etc/apache2/ssl/
+sudo cp (_server_private_key_name_).key /etc/apache2/ssl/
+sudo cp (_sub_ca_certificate_name_).crt /etc/apache2/ssl/
+
+echo "<h1>HTTPS Enabled Successfully</h1>" | sudo tee /var/www/html/index.html
+
+sudo nano /etc/apache2/sites-available/ssl.conf
+<VirtualHost *:443>
+
+    ServerName (_domain_name_or_localhost_)
+
+    DocumentRoot /var/www/html
+
+    SSLEngine on
+
+    SSLCertificateFile /etc/apache2/ssl/(_server_certificate_name_).crt
+
+    SSLCertificateKeyFile /etc/apache2/ssl/(_server_private_key_name_).key
+
+    SSLCertificateChainFile /etc/apache2/ssl/(_sub_ca_certificate_name_).crt
+
+</VirtualHost>
+
+sudo a2ensite ssl.conf
+sudo apachectl configtest
+
+sudo systemctl restart apache2
+
+https://localhost
+
+
+
