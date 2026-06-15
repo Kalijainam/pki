@@ -43,6 +43,9 @@ sudo nano /etc/apache2/sites-available/ssl.conf
     SSLCertificateChainFile /etc/apache2/ssl/(_sub_ca_certificate_name_).crt
 </VirtualHost>
 
+sudo nano /etc/apache2/apache2.conf
+ServerName abc.example.com
+
 sudo a2ensite ssl.conf
 sudo apachectl configtest
 
