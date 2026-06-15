@@ -1,0 +1,330 @@
+```bash
+# Install Apache
+sudo apt update
+sudo apt install apache2 -y
+
+# Start Apache
+sudo systemctl start apache2
+sudo systemctl enable apache2
+
+# Install XCA (GUI Certificate Authority Tool)
+sudo apt install xca -y
+
+# Create a working directory
+mkdir ~/pki-lab
+cd ~/pki-lab
+
+# Launch XCA
+xca
+```
+
+### Inside XCA
+
+#### Step 1: Create Database
+
+```text
+File → New Database
+Filename: text.xdb
+Choose a password
+Save
+```
+
+---
+
+#### Step 2: Create Root CA Private Key
+
+```text
+Private Keys → New Key
+Name: RootCA-Key
+Key Type: RSA
+Key Size: 2048
+Create
+```
+
+---
+
+#### Step 3: Create Root CA Certificate
+
+```text
+Certificates → New Certificate
+
+Source:
+✓ Create a self signed certificate
+
+Subject:
+CN = RootCA
+O = Example
+C = IN
+
+Extensions:
+Basic Constraints:
+✓ CA = TRUE
+
+Key Usage:
+✓ Certificate Sign
+✓ CRL Sign
+
+OK
+```
+
+Export:
+
+```text
+Certificates → RootCA → Export
+Format: PEM (*.crt)
+Save as: ca.crt
+```
+
+Export private key:
+
+```text
+Private Keys → RootCA-Key → Export
+Format: PEM
+Save as: root.pem
+```
+
+---
+
+#### Step 4: Create Bob Private Key
+
+```text
+Private Keys → New Key
+
+Name: Bob-Key
+RSA
+2048 bits
+Create
+```
+
+Export:
+
+```text
+Private Keys → Bob-Key → Export
+Format: PEM
+Save as: bob.pem
+```
+
+---
+
+#### Step 5: Create Bob Certificate
+
+```text
+Certificates → New Certificate
+
+Template:
+HTTPS_Server
+
+Subject:
+CN = bob.example.com
+O = Example
+C = IN
+
+Signing:
+Use Private Key: Bob-Key
+Sign with: RootCA
+
+Extensions:
+CA = FALSE
+
+OK
+```
+
+Export:
+
+```text
+Certificates → bob.example.com → Export
+
+Format: PEM
+Save as:
+bob.example.com.crt
+```
+
+---
+
+### Files Created
+
+```bash
+ls
+```
+
+Output:
+
+```text
+text.xdb
+root.pem
+ca.crt
+bob.pem
+bob.example.com.crt
+```
+
+---
+
+### Configure Apache SSL
+
+Create SSL directory:
+
+```bash
+sudo mkdir -p /etc/apache2/ssl
+```
+
+Copy certificates:
+
+```bash
+sudo cp bob.example.com.crt /etc/apache2/ssl/
+sudo cp bob.pem /etc/apache2/ssl/
+sudo cp ca.crt /etc/apache2/ssl/
+```
+
+Enable SSL:
+
+```bash
+sudo a2enmod ssl
+sudo systemctl restart apache2
+```
+
+---
+
+### Create Web Page
+
+```bash
+sudo mkdir -p /var/www/bob.example.com
+```
+
+```bash
+sudo nano /var/www/bob.example.com/index.html
+```
+
+Paste:
+
+```html
+<html>
+<head>
+<title>Bob Secure Website</title>
+</head>
+<body>
+<h1>Welcome to Bob Secure Website</h1>
+<h2>HTTPS Enabled using XCA Certificates</h2>
+</body>
+</html>
+```
+
+Save:
+
+```text
+Ctrl + O
+Enter
+Ctrl + X
+```
+
+---
+
+### Create Virtual Host
+
+```bash
+sudo nano /etc/apache2/sites-available/bob.example.com.conf
+```
+
+Paste:
+
+```apache
+<VirtualHost *:443>
+
+ServerName bob.example.com
+DocumentRoot /var/www/bob.example.com
+
+SSLEngine on
+
+SSLCertificateFile /etc/apache2/ssl/bob.example.com.crt
+SSLCertificateKeyFile /etc/apache2/ssl/bob.pem
+
+<Directory /var/www/bob.example.com>
+AllowOverride All
+Require all granted
+</Directory>
+
+</VirtualHost>
+```
+
+Save and exit.
+
+---
+
+### Enable Site
+
+```bash
+sudo a2ensite bob.example.com.conf
+```
+
+Check config:
+
+```bash
+sudo apache2ctl configtest
+```
+
+Expected:
+
+```text
+Syntax OK
+```
+
+Restart Apache:
+
+```bash
+sudo systemctl restart apache2
+```
+
+---
+
+### Add Host Entry
+
+```bash
+sudo nano /etc/hosts
+```
+
+Add:
+
+```text
+127.0.0.1    bob.example.com
+```
+
+Save.
+
+---
+
+### Verify
+
+Open browser:
+
+```text
+https://bob.example.com
+```
+
+Or test from terminal:
+
+```bash
+curl -k https://bob.example.com
+```
+
+Check certificate:
+
+```bash
+openssl x509 -in bob.example.com.crt -text -noout
+```
+
+Check Apache SSL:
+
+```bash
+openssl s_client -connect bob.example.com:443
+```
+
+Final files:
+
+```text
+text.xdb
+root.pem
+ca.crt
+bob.pem
+bob.example.com.crt
+/var/www/bob.example.com/index.html
+/etc/apache2/sites-available/bob.example.com.conf
+```
