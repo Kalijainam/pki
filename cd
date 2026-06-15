@@ -29,27 +29,28 @@ sudo cp (_sub_ca_certificate_name_).crt /etc/apache2/ssl/
 
 echo "<h1>HTTPS Enabled Successfully</h1>" | sudo tee /var/www/html/index.html
 
+sudo nano /etc/hosts
+Add:
+127.0.0.1 example.com
+
 sudo nano /etc/apache2/sites-available/ssl.conf
 <VirtualHost *:443>
-
     ServerName (_domain_name_or_localhost_)
-
     DocumentRoot /var/www/html
-
     SSLEngine on
-
     SSLCertificateFile /etc/apache2/ssl/(_server_certificate_name_).crt
-
     SSLCertificateKeyFile /etc/apache2/ssl/(_server_private_key_name_).key
-
     SSLCertificateChainFile /etc/apache2/ssl/(_sub_ca_certificate_name_).crt
-
 </VirtualHost>
 
 sudo a2ensite ssl.conf
 sudo apachectl configtest
 
 sudo systemctl restart apache2
+
+
+sudo ss -tulpn | grep 443
+curl -k https://example.com
 
 https://localhost
 
